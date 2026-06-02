@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML 機器學習 Kahoot 競答遊戲</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#46178f;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;margin:0;}
+.kb,.ks,.btn-name{transition:opacity .2s,transform .1s,filter .1s;cursor:pointer}
+.kb:not([disabled]):hover{transform:scale(1.04);filter:brightness(1.15)}
+.kb:not([disabled]):active{transform:scale(.96)}
+.ks:hover,.btn-name:hover{filter:brightness(1.14);transform:scale(1.02)}
+.ks:active,.btn-name:active{transform:scale(.97)}
+.wa-list::-webkit-scrollbar, .lb-list::-webkit-scrollbar { width: 6px; }
+.wa-list::-webkit-scrollbar-track, .lb-list::-webkit-scrollbar-track { background: transparent; }
+.wa-list::-webkit-scrollbar-thumb, .lb-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+.name-input{width:100%;padding:15px;font-size:18px;border-radius:10px;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:white;text-align:center;margin-bottom:15px;outline:none;transition:border .3s;}
+.name-input:focus{border:2px solid #fff;}
+.name-input::placeholder{color:rgba(255,255,255,0.5);}
+</style>
+</head>
+<body>
+<div id="krt"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+(function(){
+var h=React.createElement;
+var su=React.useState,ue=React.useEffect;
+var TM=20,BP=1000,BG='#46178f';
+var COL=['#e21b3c','#1368ce','#d89e00','#26890c'];
+var ICO=['▲','◆','●','■'];
+// 為了版面簡潔，此處省略部分題目，請把原本的 ALL 陣列完整貼回來替換這裡
+var ALL=[
+{c:'Perceptron',q:'Which scikit-learn function splits data into training and test sets?',o:['StandardScaler()','train_test_split()','predict()','fit()'],a:1},
+{c:'Perceptron',q:'What does stratify=y ensure in train_test_split()?',o:['Dataset is standardized','Training data has only one class','Train/test sets preserve class proportions','Model converges faster'],a:2},
+{c:'Perceptron',q:'What does random_state=1 ensure when splitting data?',o:['Faster training','Balanced classes automatically','Reproducible results','Higher accuracy'],a:2},
+{c:'Perceptron',q:'Which scikit-learn class standardizes features?',o:['StandardScaler','Normalizer','MinMaxScaler','FeatureEncoder'],a:0},
+{c:'Perceptron',q:"In scikit-learn's Perceptron, what does eta0 represent?",o:['Number of iterations','Learning rate','Regularization parameter','Number of features'],a:1},
+{c:'Perceptron',q:'Why is the Perceptron not recommended in practice?',o:['Requires too much memory','Only works with numerical features','Does not converge on non-linearly separable data','Cannot classify multiple classes'],a:2},
+{c:'Logistic Regression',q:'Logistic regression is primarily used for:',o:['Regression tasks','Clustering tasks','Classification tasks','Dimensionality reduction'],a:2},
+{c:'Logistic Regression',q:'The odds in logistic regression are defined as:',o:['p / (1-p)','(1-p) / p','p × (1-p)','p²'],a:0},
+{c:'Logistic Regression',q:'What does the logit function represent?',o:['Square root of probability','Logarithm of the odds','Derivative of sigmoid','Mean squared error'],a:1},
+{c:'Logistic Regression',q:'Which function maps real inputs to probabilities?',o:['ReLU function','Identity function','Sigmoid function','Softmax function'],a:2},
+{c:'Logistic Regression',q:'What is the sigmoid function formula?',o:['σ(z)=z²','σ(z)=1/(1+e^(−z))','σ(z)=e^z','σ(z)=log(z)'],a:1},
+{c:'Logistic Regression',q:'If σ(z)=0.8, what does this mean?',o:['Feature value is 0.8','80% probability of class 1','Model accuracy is 80%','Training loss is 0.8'],a:1},
+{c:'Logistic Regression',q:'Which method returns class probabilities from logistic regression?',o:['predict()','score()','predict_proba()','fit()'],a:2},
+{c:'Logistic Regression',q:'What is the purpose of regularization in logistic regression?',o:['Increase dataset size','Reduce overfitting by penalizing large weights','Increase training speed','Remove features automatically'],a:1},
+{c:'Logistic Regression',q:"Parameter C in scikit-learn's logistic regression controls:",o:['Number of training samples','Learning rate','Inverse of regularization strength','Number of iterations'],a:2},
+{c:'SVM',q:'What is the main objective of an SVM?',o:['Minimize number of features','Maximize margin between classes','Minimize training time','Increase dataset size'],a:1},
+{c:'SVM',q:'What are support vectors in SVM?',o:['All training samples','Points farthest from boundary','Training examples closest to the hyperplane','Only test dataset points'],a:2},
+{c:'SVM',q:'Why are large margins preferred in SVM?',o:['Reduce computational cost','Reduce generalization error and overfitting','Increase number of features','Make dataset larger'],a:1},
+{c:'SVM',q:'What is the purpose of slack variables in SVM?',o:['Eliminate all classification errors','Allow misclassifications in non-linearly separable data','Increase training samples','Remove noise from data'],a:1},
+{c:'SVM',q:'What does the C parameter control in SVM?',o:['Number of iterations','Penalty for misclassification','Dataset size','Feature scaling'],a:1},
+{c:'SVM',q:'What happens when C is very large in SVM?',o:['Model allows more misclassification','Penalty becomes large, margin shrinks','Margin becomes very wide','Dataset size increases'],a:1},
+{c:'SVM',q:'What is the main idea behind kernel methods in SVM?',o:['Reduce dataset size','Map nonlinear data to higher-dim linearly separable space','Remove features','Normalize training data'],a:1},
+{c:'SVM',q:'Which kernel is most commonly used in kernel SVM?',o:['Linear kernel','Polynomial kernel','Radial Basis Function (RBF) kernel','Sigmoid kernel'],a:2},
+{c:'SVM',q:'In RBF kernel SVM, what does gamma control?',o:['Number of features','Influence of training examples on decision boundary','Dataset size','Number of iterations'],a:1},
+{c:'SVM',q:'What happens if gamma is very large?',o:['Decision boundary becomes smoother','Model becomes less sensitive','Decision boundary tightens, may overfit','Dataset becomes linearly separable'],a:2},
+{c:'Decision Tree',q:'Why are decision trees often considered attractive?',o:['Always outperform other classifiers','Require feature scaling','Easy to interpret','Only work with categorical data'],a:2},
+{c:'Decision Tree',q:'Which feature is chosen for each split in a decision tree?',o:['Feature with smallest variance','Feature with largest information gain','Feature with highest mean','Feature with fewest unique values'],a:1},
+{c:'Decision Tree',q:'What does a pure leaf node mean?',o:['Contains equal amounts of all classes','Contains only one training example','All examples belong to the same class','Node has no missing values'],a:2},
+{c:'Decision Tree',q:'Why do decision trees often need pruning?',o:['To enable feature scaling','To reduce overfitting from deep trees','To convert categorical data','To increase class count'],a:1},
+{c:'Decision Tree',q:'Which is a commonly used impurity measure in decision trees?',o:['Mean squared error only','Euclidean distance','Gini impurity','Cosine similarity'],a:2},
+{c:'Decision Tree',q:'Which impurity measure is NOT recommended for growing trees?',o:['Entropy','Gini impurity','Classification error','Variance reduction'],a:2},
+{c:'Decision Tree',q:'Which statement about decision trees is correct?',o:['Feature scaling is required','Can only split into more than two child nodes','Can build complex axis-parallel decision boundaries','Cannot handle numerical features'],a:2},
+{c:'Random Forest',q:'What is a random forest?',o:['A single very deep decision tree','An ensemble of multiple decision trees','A clustering algorithm','A feature selection method'],a:1},
+{c:'Random Forest',q:'How does a random forest make its final classification decision?',o:['By averaging feature values','By selecting the deepest tree','By majority vote across trees','By pruning all trees first'],a:2},
+{c:'Random Forest',q:'In a random forest, what is a bootstrap sample?',o:['Sample chosen without replacement','Sample chosen with replacement from training data','Sample containing only test examples','Sample of only one class'],a:1},
+{c:'Random Forest',q:'Key difference between a decision tree and a random forest?',o:['Random forests are more interpretable','Random forests evaluate all features at every split','Random forests reduce overfitting by averaging predictions','Random forests cannot classify'],a:2},
+{c:'Random Forest',q:'Why is only a random feature subset used at each split?',o:['To make every tree identical','To increase randomness and diversity among trees','To remove bootstrap sampling','To guarantee perfect accuracy'],a:1},
+{c:'KNN',q:'Why is KNN called a lazy learning algorithm?',o:['Learns very slowly','Memorizes training data instead of learning a model','Requires fewer features','Ignores training data'],a:1},
+{c:'KNN',q:'KNN belongs to which category of machine learning?',o:['Parametric models','Non-parametric models','Linear models','Probabilistic models'],a:1},
+{c:'KNN',q:'What type of learning approach does KNN use?',o:['Reinforcement learning','Instance-based learning (lazy learning)','Deep learning','Rule-based learning'],a:1},
+{c:'KNN',q:'Which step is part of the KNN algorithm?',o:['Build a decision tree','Estimate regression coefficients','Find the k nearest neighbors','Perform gradient descent'],a:2},
+{c:'KNN',q:'How does KNN assign the class label to a new data point?',o:['Using a logistic function','Using majority voting among nearest neighbors','Using gradient descent','Using entropy calculation'],a:1},
+{c:'KNN',q:'What is one advantage of memory-based approaches like KNN?',o:['Require no storage space','Automatically reduce dataset size','Adapt quickly when new training data is added','Always faster than linear models'],a:2},
+{c:'KNN',q:'What is a major disadvantage of KNN?',o:['Cannot classify data','Prediction time increases as dataset grows','Cannot handle numerical features','Requires no training data'],a:1},
+{c:'KNN',q:'Which distance metric is commonly used for real-valued features in KNN?',o:['Cosine similarity','Euclidean distance','Hamming distance','Jaccard distance'],a:1},
+{c:'KNN',q:'In scikit-learn KNN, what happens if there is a tie in the majority vote?',o:['Algorithm chooses random class','Algorithm prefers class with closer neighbors','Algorithm stops classification','Algorithm always chooses class 0'],a:1},
+{c:'KNN',q:'Why is KNN susceptible to the curse of dimensionality?',o:['High-dimensional data increases accuracy','Feature spaces become sparse, making neighbors less meaningful','Dataset becomes too small','Distance calculations become impossible'],a:1},
+{c:'Data Preprocessing',q:'Why is it important to handle missing data before analysis?',o:['Improves visualization only','Most tools cannot handle missing values and may produce unreliable results','Missing data has no effect','Reduces dataset size'],a:1},
+{c:'Data Preprocessing',q:'Which pandas method detects missing values in a DataFrame?',o:['dropna()','fillna()','isnull()','read_csv()'],a:2},
+{c:'Data Preprocessing',q:'What is mean imputation?',o:['Remove all rows with missing values','Replace missing values with zero','Replace missing values with column average','Replace with most frequent category'],a:2},
+{c:'Categorical Data',q:'Key difference between ordinal and nominal features?',o:['Ordinal is numeric, nominal is text','Ordinal features have an order, nominal do not','Nominal features are always binary','Ordinal features cannot be encoded'],a:1},
+{c:'Categorical Data',q:'Why must ordinal features be mapped carefully before training?',o:['To reduce dataset size','To ensure the algorithm understands the correct order','To remove missing values','To normalize data'],a:1},
+{c:'Categorical Data',q:'Why is encoding nominal features as integers problematic?',o:['Increases dataset size too much','Removes missing values automatically','Models may wrongly assume an order between categories','Converts categorical to continuous automatically'],a:2},
+{c:'Categorical Data',q:'What is the purpose of one-hot encoding?',o:['Reduce number of features','Convert numerical to categories','Represent categories as binary vectors without implying order','Normalize data'],a:2},
+{c:'Feature Scaling',q:'Why is feature scaling important in machine learning?',o:['Reduces number of features','Ensures all features contribute equally','Removes missing values','Converts categorical to numerical'],a:1},
+{c:'Feature Scaling',q:'Main difference between normalization and standardization?',o:['Normalization centers at mean 0; standardization scales to [0,1]','Normalization scales to [0,1]; standardization gives mean 0 and std 1','Both produce identical results','Standardization removes outliers'],a:1},
+{c:'Feature Selection',q:'What is overfitting?',o:['Model performs better on test than training','Model fits training data too closely but fails to generalize','Model has too few parameters','Model ignores training data'],a:1},
+{c:'Feature Selection',q:'Which of the following reduces overfitting?',o:['Increasing model complexity','Removing all features','Applying regularization','Using only training data'],a:2},
+{c:'Feature Selection',q:'In L2 regularization, what happens when λ increases?',o:['Loss function becomes non-convex','L2 constraint ball becomes larger','Weight coefficients are forced closer to zero','Model depends more on training data'],a:2},
+{c:'Feature Selection',q:'Main difference between L1 and L2 regularization?',o:['L1 uses squared weights; L2 uses absolute values','L1 uses absolute values; L2 uses squared weights','Both use absolute values','Both use squared weights'],a:1},
+{c:'Feature Selection',q:'Why does L1 regularization produce sparse solutions?',o:['It squares weights making them smaller','It constrains weights within a circular region','Diamond-shaped constraint makes optimal solution lie on axes','It increases all feature weights equally'],a:2},
+{c:'Feature Selection',q:'What is the main idea of Sequential Backward Selection (SBS)?',o:['Add features one at a time','Remove features one at a time based on least performance loss','Randomly select features','Use all features permanently'],a:1},
+{c:'Feature Selection',q:'How does a random forest determine feature importance?',o:['Measuring correlation with target variable','Averaging impurity decrease across all decision trees','Eliminating features with low variance','Selecting features with highest weights in logistic regression'],a:1},
+{c:'PCA',q:'Which best describes feature extraction?',o:['Selects original features without modification','Transforms data into a new feature space','Removes irrelevant samples','Only works with labeled data'],a:1},
+{c:'PCA',q:'What is the correct FIRST step in PCA?',o:['Compute eigenvalues','Construct covariance matrix','Standardize the dataset','Select top k eigenvectors'],a:2},
+{c:'PCA',q:'What do eigenvectors represent in PCA?',o:['Original dataset features','Directions of maximum variance','Class labels','Noise in the dataset'],a:1},
+{c:'PCA',q:'What does a covariance matrix represent?',o:['Frequency of data points','Pairwise relationships between features','Classification accuracy','Distance between samples'],a:1},
+{c:'PCA',q:'What does the explained variance ratio indicate?',o:['Accuracy of the model','Importance of each principal component','Number of features removed','Training time reduction'],a:1},
+{c:'PCA',q:'What is the purpose of projection matrix W in PCA?',o:['Classify data points','Normalize features','Transform data into a lower-dimensional space','Compute eigenvalues'],a:2},
+{c:'LDA',q:'What is the primary goal of LDA?',o:['Maximize variance in dataset','Minimize computational cost only','Maximize class separability','Remove outliers from data'],a:2},
+{c:'LDA',q:'Which describes the relationship between PCA and LDA?',o:['Both supervised','PCA supervised, LDA unsupervised','Both linear; PCA unsupervised, LDA supervised','PCA and LDA are identical'],a:2},
+{c:'LDA',q:'What is the role of the within-class scatter matrix SW in LDA?',o:['Measures separation between classes','Measures spread of samples within each class','Computes eigenvalues directly','Normalizes the dataset'],a:1},
+{c:'LDA',q:'Maximum number of linear discriminants LDA can produce?',o:['Equal to number of features','Equal to number of samples','At most c-1 (c = number of classes)','Unlimited'],a:2},
+{c:'Pipelines',q:'What is the correct order in this Pipeline?',o:['PCA → StandardScaler → LogisticRegression','StandardScaler → PCA → LogisticRegression','LogisticRegression → PCA → StandardScaler','PCA → LogisticRegression → StandardScaler'],a:1},
+{c:'Pipelines',q:'What happens when fit() is called on a Pipeline?',o:['Only final estimator trains on raw data','Data goes directly to PCA without scaling','Data is sequentially transformed, then fits the estimator','Only transformers are fitted; estimator is ignored'],a:2},
+{c:'Cross-Validation',q:'Main advantage of k-fold cross-validation over holdout?',o:['Uses less data for training','Eliminates need for test dataset','Less sensitive to data partitioning','Avoids training data entirely'],a:2},
+{c:'Cross-Validation',q:'Commonly recommended value of k in k-fold cross-validation?',o:['2','5','10','Equal to number of features'],a:2},
+{c:'Model Evaluation',q:'What does a high bias (underfitting) problem typically indicate?',o:['High training, low validation accuracy','Low training and low validation accuracy','High training and high validation accuracy','Large gap between training and validation'],a:1},
+{c:'Model Evaluation',q:'Which is a common way to reduce overfitting?',o:['Decrease training data','Increase model complexity','Increase regularization or reduce complexity','Remove validation set'],a:2},
+{c:'Hyperparameter Tuning',q:'What is the main characteristic of grid search?',o:['Randomly samples hyperparameters','Evaluates all combinations of specified hyperparameters','Only tunes one parameter at a time','Uses Bayesian optimization'],a:1},
+{c:'Hyperparameter Tuning',q:'Why is randomized search often preferred over grid search?',o:['Guarantees optimal results','Evaluates fewer models but explores wider range','Does not require cross-validation','Only works with SVM models'],a:1},
+{c:'Hyperparameter Tuning',q:'What does refit=True do in GridSearchCV?',o:['Skips training after tuning','Retrains best model on full training dataset','Tests model on unseen data','Reduces computation time'],a:1},
+{c:'Hyperparameter Tuning',q:'What is the key idea behind successive halving?',o:['Train all models fully before selection','Randomly discard models without evaluation','Iteratively remove poorly performing configurations','Use only one hyperparameter'],a:2},
+{c:'Evaluation Metrics',q:'What does a confusion matrix represent?',o:['Model training time','Counts of TP, TN, FP, FN','Hyperparameter values','Feature importance'],a:1},
+{c:'Evaluation Metrics',q:'Which metric is equivalent to True Positive Rate (TPR)?',o:['Precision','Recall','Accuracy','FPR'],a:1},
+{c:'Evaluation Metrics',q:'What happens when we optimize for recall?',o:['Fewer false positives','More false negatives','Fewer false negatives','No trade-off'],a:2},
+{c:'Evaluation Metrics',q:'Why is precision important in spam detection?',o:['To catch all spam emails','To avoid labeling real emails as spam','To increase dataset size','To reduce training time'],a:1},
+{c:'Ensemble Learning',q:'Which method selects the label with the most votes in multiclass?',o:['Gradient Descent','Plurality Voting','Backpropagation','Cross Validation'],a:1},
+{c:'Ensemble Learning',q:'What is the purpose of weighted majority voting?',o:['Remove all weak classifiers','Assign equal importance to datasets','Give different importance to classifiers','Reduce number of features'],a:2},
+{c:'Ensemble Learning',q:'Which NumPy function returns the index of the highest count?',o:['np.mean()','np.argmax()','np.std()','np.sort()'],a:1},
+{c:'Ensemble Learning',q:'Which classifier was mentioned as NOT scale-invariant?',o:['Decision Tree','Logistic Regression','Random Forest','Voting Classifier'],a:1},
+{c:'Ensemble Learning',q:'Why is bagging also called bootstrap aggregating?',o:['It removes duplicate samples','It combines classifiers trained on bootstrap samples','It only works with random forests','It reduces training examples'],a:1},
+{c:'Ensemble Learning',q:'What is the main idea behind AdaBoost?',o:['Remove all weak learners','Focus learning on hard-to-classify examples','Use only random feature subsets','Train classifiers with equal weights forever'],a:1},
+{c:'Ensemble Learning',q:'Which classifier is commonly used as a weak learner in AdaBoost?',o:['Deep Neural Network','Decision Tree Stump','Random Forest','SVM with RBF Kernel'],a:1},
+{c:'Ensemble Learning',q:'What is the main idea behind gradient boosting?',o:['Train all trees independently','Train trees sequentially to reduce previous errors','Use only one deep neural network','Randomly remove training samples'],a:1},
+{c:'Ensemble Learning',q:'How are prediction errors used in gradient boosting?',o:['Ignored after training','Used to create bootstrap samples','Used directly to fit the next tree','Replace training labels permanently'],a:2},
+{c:'Ensemble Learning',q:'What is the role of the learning rate in gradient boosting?',o:['Increases feature dimensions','Scales updates from each tree','Removes weak learners','Selects random samples'],a:1},
+{c:'Ensemble Learning',q:'Which gradient boosting implementation is famous for winning Kaggle?',o:['AdaBoost','Random Forest','XGBoost','KNN'],a:2}
+];
+
+function shuffle(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=0|Math.random()*(i+1);var t=b[i];b[i]=b[j];b[j]=t;}return b;}
+
+function App(){
+  // 狀態管理：新增 login 階段、玩家名稱、排行榜資料
+  var sp=su('login'),phase=sp[0],setPhase=sp[1];
+  var spn=su(''),playerName=spn[0],setPlayerName=spn[1];
+  var slb=su([]),leaderboard=slb[0],setLeaderboard=slb[1];
+  
+  var sq=su([]),qs=sq[0],setQs=sq[1];
+  var sqi=su(0),qi=sqi[0],setQi=sqi[1];
+  var ss=su(0),score=ss[0],setScore=ss[1];
+  var sc=su(0),correct=sc[0],setCorrect=sc[1];
+  var sk=su(0),streak=sk[0],setStreak=sk[1];
+  var st=su(TM),timer=st[0],setTimer=st[1];
+  var sch=su(null),chosen=sch[0],setChosen=sch[1];
+  var sp2=su(0),pts=sp2[0],setPts=sp2[1];
+  var sw=su([]),wrongAnswers=sw[0],setWrongAnswers=sw[1];
+
+  // 讀取本地排行榜
+  ue(function(){
+    var savedBoard = JSON.parse(localStorage.getItem('mlKahootLeaderboard')||'[]');
+    setLeaderboard(savedBoard);
+  },[]);
+
+  ue(function(){
+    if(phase!=='playing')return;
+    if(timer===0){
+      setChosen(-1);setPts(0);setStreak(0);
+      setWrongAnswers(function(w){return w.concat({q:qs[qi], chosen:-1});});
+      setPhase('feedback');
+      return;
+    }
+    var id=setTimeout(function(){setTimer(function(t){return t-1;});},1000);
+    return function(){clearTimeout(id);};
+  },[phase,timer,qs,qi]);
+
+  function handleLogin(){
+    if(playerName.trim()==='') return alert('請輸入你的名字喔！');
+    setPhase('start');
+  }
+
+  function startGame(n){
+    // 自動複製 ALL 陣列避免污染原始資料
+    var db = JSON.parse(JSON.stringify(ALL));
+    var qRaw = shuffle(db).slice(0,n);
+    
+    var q=qRaw.map(function(item){
+      var correctText=item.o[item.a];       
+      var newOpts=shuffle(item.o);          
+      var newA=newOpts.indexOf(correctText); 
+      return { c: item.c, q: item.q, o: newOpts, a: newA };
+    });
+
+    setQs(q);setQi(0);setScore(0);setCorrect(0);setStreak(0);
+    setTimer(TM);setChosen(null);setPts(0);
+    setWrongAnswers([]);
+    setPhase('playing');
+  }
+
+  function answer(idx){
+    if(phase!=='playing')return;
+    var q=qs[qi];
+    if(idx===q.a){
+      var e=Math.max(100,Math.round(BP*timer/TM))+(streak>=2?150:0);
+      setPts(e);
+      setScore(function(s){return s+e;});
+      setCorrect(function(c){return c+1;});
+      setStreak(function(s){return s+1;});
+    }else{
+      setPts(0);setStreak(0);
+      setWrongAnswers(function(w){return w.concat({q:q, chosen:idx});});
+    }
+    setChosen(idx);setPhase('feedback');
+  }
+
+  function next(){
+    if(qi+1>=qs.length){
+      // 遊戲結束，儲存分數到排行榜
+      var newEntry = { name: playerName, score: score, acc: Math.round(correct/qs.length*100) };
+      var updatedBoard = leaderboard.concat(newEntry).sort(function(a,b){return b.score - a.score}).slice(0, 10);
+      localStorage.setItem('mlKahootLeaderboard', JSON.stringify(updatedBoard));
+      setLeaderboard(updatedBoard);
+      setPhase('done');
+      return;
+    }
+    setQi(function(i){return i+1;});setTimer(TM);setChosen(null);setPts(0);setPhase('playing');
+  }
+
+  var btnS=function(bg){return{display:'block',width:'100%',background:bg,color:'white',border:'none',borderRadius:30,padding:'13px 0',fontSize:14,fontWeight:'bold',marginBottom:10};};
+
+  // 階段 1：登入畫面 (輸入名稱)
+  if(phase==='login'){
+    return h('div',{style:{background:BG,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
+      h('div',{style:{textAlign:'center',maxWidth:320,width:'100%'}},
+        h('div',{style:{fontSize:72,marginBottom:15}},'🎮'),
+        h('div',{style:{color:'white',fontSize:26,fontWeight:'bold',marginBottom:20}},'歡迎來到 ML 競答'),
+        h('input',{className:'name-input',placeholder:'請輸入你的暱稱...',value:playerName,
+          onChange:function(e){setPlayerName(e.target.value)},
+          onKeyDown:function(e){if(e.key==='Enter')handleLogin()}
+        }),
+        h('button',{className:'btn-name',onClick:handleLogin,style:btnS('#1368ce')},'準備就緒 🚀')
+      )
+    );
+  }
+
+  // 階段 2：選擇模式
+  if(phase==='start'){
+    return h('div',{style:{background:BG,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
+      h('div',{style:{textAlign:'center',maxWidth:360,width:'100%'}},
+        h('div',{style:{color:'#ffee66',fontSize:16,fontWeight:'bold',marginBottom:10}},'哈囉，' + playerName + '！'),
+        h('div',{style:{fontSize:56,marginBottom:8}},'🧠'),
+        h('div',{style:{color:'white',fontSize:24,fontWeight:'bold',marginBottom:4}},'選擇挑戰模式'),
+        h('div',{style:{color:'rgba(255,255,255,0.5)',fontSize:12,marginBottom:24,lineHeight:1.6}},
+          '共 '+ALL.length+' 道題目・答題越快，得分越高！'),
+        h('button',{className:'ks',onClick:function(){startGame(ALL.length);},style:btnS('#26890c')},'🏆 全題挑戰 — '+ALL.length+' 題'),
+        h('button',{className:'ks',onClick:function(){startGame(Math.min(40, ALL.length));},style:btnS('#1368ce')},'🎯 標準模式 — 40 題'),
+        h('button',{className:'ks',onClick:function(){startGame(Math.min(20, ALL.length));},style:Object.assign({},btnS('#e21b3c'),{marginBottom:0})},'⚡ 快速模式 — 20 題')
+      )
+    );
+  }
+
+  // 階段 4：結果與排行榜
+  if(phase==='done'){
+    var pct=qs.length>0?Math.round(correct/qs.length*100):0;
+    var isTop3 = leaderboard.findIndex(function(l){return l.name===playerName && l.score===score}) < 3;
+    
+    return h('div',{style:{background:BG,minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',padding:'30px 20px'}},
+      h('div',{style:{textAlign:'center',maxWidth:400,width:'100%'}},
+        // 個人成績
+        h('div',{style:{background:'rgba(0,0,0,0.25)',borderRadius:15,padding:'20px',marginBottom:20}},
+          h('div',{style:{color:'white',fontSize:20,fontWeight:'bold'}},isTop3?'🎉 恭喜上榜！':'遊戲結束！'),
+          h('div',{style:{color:'#ffa500',fontSize:42,fontWeight:'bold',margin:'5px 0'}},score.toLocaleString()),
+          h('div',{style:{color:'rgba(255,255,255,0.8)',fontSize:14}},'正確率 '+pct+'% ('+correct+'/'+qs.length+')')
+        ),
+        
+        // 排行榜
+        h('div',{className:'lb-list', style:{background:'white',borderRadius:15,padding:'20px 15px',marginBottom:20,textAlign:'left'}},
+          h('div',{style:{color:'#333',fontSize:18,fontWeight:'bold',marginBottom:15,textAlign:'center'}},'🏆 本地排行榜 Top 10'),
+          leaderboard.map(function(entry, i){
+            var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
+            var color = i===0?'#d89e00':i===1?'#8a9ca8':i===2?'#cd7f32':'#666';
+            var isMe = entry.name === playerName && entry.score === score;
+            return h('div',{key:i,style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px',borderBottom:'1px solid #eee',background:isMe?'#fff9e6':'transparent',borderRadius:isMe?8:0}},
+              h('div',{style:{display:'flex',alignItems:'center',gap:10}},
+                h('span',{style:{fontSize:18,width:24,textAlign:'center',color:color,fontWeight:'bold'}},medal),
+                h('span',{style:{fontSize:16,fontWeight:isMe?'bold':'normal',color:'#333'}},entry.name)
+              ),
+              h('div',{style:{textAlign:'right'}},
+                h('div',{style:{fontSize:16,fontWeight:'bold',color:'#333'}},entry.score.toLocaleString()),
+                h('div',{style:{fontSize:11,color:'#888'}},entry.acc+'% 正確率')
+              )
+            );
+          })
+        ),
+
+        // 錯題回顧
+        wrongAnswers.length > 0 ? h('div',{className:'wa-list', style:{background:'rgba(0,0,0,0.2)',borderRadius:10,padding:'15px 15px 5px',marginBottom:20,textAlign:'left',maxHeight:200,overflowY:'auto'}},
+          h('div',{style:{color:'#ffa500',fontSize:15,fontWeight:'bold',marginBottom:12}},'錯題回顧：'),
+          wrongAnswers.map(function(wa,i){
+            var wq=wa.q;
+            var uAns=wa.chosen===-1?'時間到 (未作答)':wq.o[wa.chosen];
+            var cAns=wq.o[wq.a];
+            return h('div',{key:i,style:{marginBottom:12,paddingBottom:12,borderBottom:i===wrongAnswers.length-1?'none':'1px solid rgba(255,255,255,0.1)'}},
+              h('div',{style:{color:'white',fontSize:13,marginBottom:6,lineHeight:1.4}},(i+1)+'. '+wq.q),
+              h('div',{style:{color:'#ff5555',fontSize:12,marginBottom:3}},'✗ 你的答案：'+uAns),
+              h('div',{style:{color:'#4dff6e',fontSize:12}},'✓ 正確答案：'+cAns)
+            );
+          })
+        ) : null,
+
+        h('button',{className:'ks',onClick:function(){setPhase('start');},style:Object.assign({},btnS('#1368ce'),{marginBottom:0})},'再玩一次 🔄')
+      )
+    );
+  }
+
+  // 階段 3：遊戲進行中 (playing / feedback)
+  var q=qs[qi]||{};
+  var circ=2*Math.PI*22;
+  var tFrac=Math.max(0,timer/TM);
+  var tClr=timer<=5?'#ff5555':timer<=10?'#ffcc00':'#fff';
+  var isRight=phase==='feedback'&&chosen===q.a;
+  var timedOut=chosen===-1;
+
+  return h('div',{style:{background:BG,padding:'12px 12px 18px',minHeight:'100vh'}},
+    h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}},
+      h('div',{style:{minWidth:64}},
+        h('div',{style:{color:'white',fontSize:11}},h('span',{style:{fontSize:18,fontWeight:'bold'}},qi+1),'/'+qs.length),
+        h('div',{style:{background:'rgba(255,255,255,0.18)',height:3,borderRadius:2,marginTop:4}},
+          h('div',{style:{background:'white',height:3,borderRadius:2,width:(qi/qs.length*100)+'%',transition:'width .5s ease'}})
+        )
+      ),
+      h('svg',{width:52,height:52,viewBox:'0 0 52 52'},
+        h('circle',{cx:26,cy:26,r:22,fill:'rgba(0,0,0,0.3)',stroke:'rgba(255,255,255,0.12)',strokeWidth:5}),
+        h('circle',{cx:26,cy:26,r:22,fill:'none',stroke:tClr,strokeWidth:5,
+          strokeDasharray:(circ*tFrac)+' '+circ,strokeLinecap:'round',transform:'rotate(-90 26 26)',
+          style:{transition:'stroke-dasharray .9s linear,stroke .3s'}}),
+        h('text',{x:26,y:31,textAnchor:'middle',fill:'white',fontSize:15,fontWeight:'bold',fontFamily:'Arial,sans-serif'},timer)
+      ),
+      h('div',{style:{textAlign:'right',minWidth:80}},
+        h('div',{style:{color:'#ffa500',fontSize:15,fontWeight:'bold'}},'⭐ '+score.toLocaleString()),
+        streak>=3?h('div',{style:{color:'#ffee66',fontSize:10,marginTop:2}},'🔥 '+streak+'連勝！'):null
+      )
+    ),
+    h('div',{style:{textAlign:'center',marginBottom:7}},
+      h('span',{style:{background:'rgba(255,255,255,0.16)',color:'rgba(255,255,255,0.9)',borderRadius:10,padding:'3px 10px',fontSize:10}},q.c)
+    ),
+    h('div',{style:{background:'white',borderRadius:10,padding:'14px 16px',marginBottom:8,minHeight:82,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}},
+      h('div',{style:{fontWeight:700,fontSize:20,color:'#111',lineHeight:1.5,marginBottom:3}},q.q)
+    ),
+    h('div',{style:{height:24,textAlign:'center',marginBottom:7,display:'flex',alignItems:'center',justifyContent:'center'}},
+      phase==='feedback'
+        ?(isRight
+          ?h('span',{style:{color:'#4dff6e',fontSize:14,fontWeight:'bold'}},'✓ 答對！+'+pts.toLocaleString()+(streak>1?' 🔥'+streak+'連勝':''))
+          :(timedOut
+            ?h('span',{style:{color:'#ff5555',fontSize:14,fontWeight:'bold'}},'⏱ 時間到！')
+            :h('span',{style:{color:'#ff5555',fontSize:14,fontWeight:'bold'}},'✗ 答錯了！')
+          )
+        ):null
+    ),
+    h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}},
+      (q.o||[]).map(function(opt,i){
+        var op=1,bdr='2px solid transparent';
+        if(phase==='feedback'){
+          if(i===q.a)bdr='3px solid white';
+          else if(i===chosen)op=0.38;
+          else op=0.24;
+        }
+        return h('button',{key:i,className:'kb',onClick:function(){answer(i);},disabled:phase!=='playing',
+          style:{background:COL[i],border:bdr,borderRadius:8,padding:'10px 8px',cursor:phase==='playing'?'pointer':'default',opacity:op,minHeight:70,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:2,transition:'opacity .22s'}},
+          h('span',{style:{fontSize:16,color:'white'}},ICO[i]),
+          h('span',{style:{color:'white',fontWeight:700,fontSize:16,lineHeight:1.3,textAlign:'center'}},opt)
+        );
+      })
+    ),
+    phase==='feedback'
+      ?h('div',{style:{textAlign:'center'}},
+          h('button',{className:'ks',onClick:next,style:{background:'rgba(255,255,255,0.16)',border:'2px solid rgba(255,255,255,0.75)',borderRadius:25,color:'white',padding:'9px 28px',fontSize:13,fontWeight:'bold'}},
+            qi+1>=qs.length?'查看結果 🎉':'下一題 →'
+          )
+        ):null
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('krt')).render(h(App));
+})();
+</script>
+</body>
+</html>
